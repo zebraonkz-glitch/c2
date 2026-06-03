@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Калькулятор</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+      background: linear-gradient(145deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      color: #eee;
+    }
+
+    .calculator {
+      width: min(320px, 92vw);
+      background: #1e1e2f;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+    }
+
+    .display {
+      background: #12121c;
+      border-radius: 10px;
+      padding: 16px 14px;
+      margin-bottom: 16px;
+      text-align: right;
+      min-height: 88px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      word-break: break-all;
+    }
+
+    .expression {
+      font-size: 0.85rem;
+      color: #888;
+      min-height: 1.2em;
+    }
+
+    .result {
+      font-size: 2rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 18px 0;
+      font-size: 1.15rem;
+      cursor: pointer;
+      background: #2d2d44;
+      color: #fff;
+      transition: background 0.15s, transform 0.1s;
+    }
+
+    button:hover {
+      background: #3d3d5c;
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+
+    button.operator {
+      background: #e94560;
+      color: #fff;
+    }
+
+    button.operator:hover {
+      background: #ff6b81;
+    }
+
+    button.equals {
+      background: #0f9b8e;
+      grid-column: span 2;
+    }
+
+    button.equals:hover {
+      background: #14b8a6;
+    }
+
+    button.wide {
+      grid-column: span 2;
+    }
+
+    button.fn {
+      background: #3a3a55;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="calculator">
+    <div class="display" aria-live="polite">
+      <div class="expression" id="expression"></div>
+      <div class="result" id="result">0</div>
+    </div>
+    <div class="keys">
+      <button type="button" class="fn" data-action="clear">C</button>
+      <button type="button" class="fn" data-action="backspace">⌫</button>
+      <button type="button" class="fn" data-action="percent">%</button>
+      <button type="button" class="operator" data-value="/">÷</button>
+
+      <button type="button" data-value="7">7</button>
+      <button type="button" data-value="8">8</button>
+      <button type="button" data-value="9">9</button>
+      <button type="button" class="operator" data-value="*">×</button>
+
+      <button type="button" data-value="4">4</button>
+      <button type="button" data-value="5">5</button>
+      <button type="button" data-value="6">6</button>
+      <button type="button" class="operator" data-value="-">−</button>
+
+      <button type="button" data-value="1">1</button>
+      <button type="button" data-value="2">2</button>
+      <button type="button" data-value="3">3</button>
+      <button type="button" class="operator" data-value="+">+</button>
+
+      <button type="button" class="wide" data-value="0">0</button>
+      <button type="button" data-value=".">.</button>
+      <button type="button" class="equals" data-action="equals">=</button>
+    </div>
+  </div>
+
+  <script>
+    const expressionEl = document.getElementById("expression");
+    const resultEl = document.getElementById("result");
+
+    let current = "0";
+    let storedExpression = "";
+    let shouldResetDisplay = false;
+
+    function updateDisplay() {
+      resultEl.textContent = current;
+      expressionEl.textContent = storedExpression;
+    }
+
+    function clearAll() {
+      current = "0";
+      storedExpression = "";
+      shouldResetDisplay = false;
+      updateDisplay();
+    }
+
+    function appendDigit(value) {
+      if (shouldResetDisplay) {
+        current = value === "." ? "0." : value;
+        shouldResetDisplay = false;
+      } else if (value === "." && current.includes(".")) {
+        return;
+      } else if (current === "0" && value !== ".") {
+        current = value;
+      } else {
+        current += value;
+      }
+      updateDisplay();
+    }
+
+    function appendOperator(op) {
+      const lastChar = storedExpression.slice(-1);
+      const operators = "+-*/";
+
+      if (shouldResetDisplay && operators.includes(lastChar)) {
+        storedExpression = storedExpression.slice(0, -1) + op;
+      } else {
+        storedExpression += current + op;
+      }
+
+      shouldResetDisplay = true;
+      updateDisplay();
+    }
+
+    function calculate() {
+      if (!storedExpression) return;
+
+      const full = storedExpression + current;
+      const safe = full.replace(/[^0-9+\-*/.()]/g, "");
+
+      try {
+        const value = Function('"use strict"; return (' + safe + ")")();
+        if (!Number.isFinite(value)) {
+          throw new Error("invalid");
+        }
+        current = String(Math.round(value * 1e10) / 1e10);
+        storedExpression = "";
+        shouldResetDisplay = true;
+      } catch {
+        current = "Ошибка";
+        storedExpression = "";
+        shouldResetDisplay = true;
+      }
+
+      updateDisplay();
+    }
+
+    function backspace() {
+      if (current === "Ошибка" || shouldResetDisplay) {
+        clearAll();
+        return;
+      }
+      current = current.length > 1 ? current.slice(0, -1) : "0";
+      updateDisplay();
+    }
+
+    function percent() {
+      const num = parseFloat(current);
+      if (Number.isNaN(num)) return;
+      current = String(num / 100);
+      updateDisplay();
+    }
+
+    document.querySelector(".keys").addEventListener("click", (e) => {
+      const btn = e.target.closest("button");
+      if (!btn) return;
+
+      const action = btn.dataset.action;
+      const value = btn.dataset.value;
+
+      if (action === "clear") {
+        clearAll();
+      } else if (action === "backspace") {
+        backspace();
+      } else if (action === "percent") {
+        percent();
+      } else if (action === "equals") {
+        calculate();
+      } else if (value && "+-*/".includes(value)) {
+        if (current !== "Ошибка") appendOperator(value);
+      } else if (value) {
+        if (current !== "Ошибка") appendDigit(value);
+      }
+    });
+
+    document.addEventListener("keydown", (e) => {
+      const key = e.key;
+
+      if (/[0-9]/.test(key)) {
+        appendDigit(key);
+      } else if (key === ".") {
+        appendDigit(".");
+      } else if (["+", "-", "*", "/"].includes(key)) {
+        appendOperator(key);
+      } else if (key === "Enter" || key === "=") {
+        e.preventDefault();
+        calculate();
+      } else if (key === "Escape") {
+        clearAll();
+      } else if (key === "Backspace") {
+        backspace();
+      } else if (key === "%") {
+        percent();
+      }
+    });
+  </script>
+</body>
+</html>
